@@ -4,12 +4,17 @@
     <!-- 기본은 HTTPS만 허용 -->
     <base-config cleartextTrafficPermitted="false" />
 
-    <!-- 🔥 EC2 퍼블릭 IP만 HTTP 허용 -->
+    <!-- 🔥 viewlulu.site HTTP 허용 (포트 3000 포함) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">viewlulu.site</domain>
+    </domain-config>
+
+    <!-- 🔥 EC2 퍼블릭 IP HTTP 허용 -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">43.203.187.226</domain>
     </domain-config>
 
-    <!-- (선택) 에뮬레이터 로컬 테스트 -->
+    <!-- 에뮬레이터 로컬 -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.0.2.2</domain>
     </domain-config>

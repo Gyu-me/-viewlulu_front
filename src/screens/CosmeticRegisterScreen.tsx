@@ -1,13 +1,11 @@
 /**
- * CosmeticRegisterScreen (서버 연동 최종본)
+ * 📁 CosmeticRegisterScreen.tsx (최종본)
  * --------------------------------------------------
- * - 화장품 등록용 카메라 화면
- * - 총 4장 촬영
- * - 촬영된 사진을 순차적으로 서버 업로드
- * - 업로드 완료 시 MyPouch로 이동
- *
- * ❗ 기존 UX 흐름 유지
- * ❗ API 연동만 추가
+ * [촬영 전용 화면]
+ * - 화장품 촬영 전용
+ * - 정면 / 측면 / 상단 / 추가 사진 총 4장 촬영
+ * - 4장 촬영 완료 시 CosmeticConfirmScreen으로 이동
+ * - ❗ 촬영만 담당 (저장 X)
  */
 
 import React, { useRef, useState } from 'react';
@@ -17,14 +15,18 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
-  Alert,
 } from 'react-native';
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { useNavigation } from '@react-navigation/native';
 
-import { uploadCosmeticApi } from '../api/cosmetic.api';
-
 const MAX_PHOTOS = 4;
+
+const CAPTURE_GUIDE = [
+  { title: '정면 촬영', desc: '화장품의 정면이 보이도록 촬영해주세요' },
+  { title: '측면 촬영', desc: '화장품의 옆면이 보이도록 촬영해주세요' },
+  { title: '상단 촬영', desc: '화장품의 위쪽이 보이도록 촬영해주세요' },
+  { title: '추가 촬영', desc: '화장품의 특징이 잘 보이도록 촬영해주세요' },
+];
 
 export default function CosmeticRegisterScreen() {
   const cameraRef = useRef<Camera>(null);
@@ -32,47 +34,24 @@ export default function CosmeticRegisterScreen() {
   const navigation = useNavigation<any>();
 
   const [photos, setPhotos] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
-
   const currentIndex = photos.length;
 
-  /* ================= 촬영 ================= */
+  const currentGuide =
+    CAPTURE_GUIDE[currentIndex] ??
+    CAPTURE_GUIDE[CAPTURE_GUIDE.length - 1];
+
   const handleCapture = async () => {
     if (!cameraRef.current || currentIndex >= MAX_PHOTOS) return;
 
     const photo = await cameraRef.current.takePhoto();
-    setPhotos(prev => [...prev, `file://${photo.path}`]);
-  };
+    const nextPhotos = [...photos, `file://${photo.path}`];
+    setPhotos(nextPhotos);
 
-  /* ================= 업로드 ================= */
-  const handleUpload = async () => {
-    try {
-      setUploading(true);
-
-      for (let i = 0; i < photos.length; i++) {
-        await uploadCosmeticApi({
-          uri: photos[i],
-          name: `cosmetic_${i + 1}.jpg`,
-          type: 'image/jpeg',
-        });
-      }
-
-      Alert.alert('등록 완료', '화장품이 내 파우치에 저장되었습니다.', [
-        {
-          text: '확인',
-          onPress: () =>
-            navigation.replace('Main', {
-              screen: 'MyPouch',
-            }),
-        },
-      ]);
-    } catch {
-      Alert.alert(
-        '업로드 실패',
-        '화장품 등록 중 오류가 발생했습니다.'
-      );
-    } finally {
-      setUploading(false);
+    // ✅ 4장 촬영 완료 → 확인 화면 이동
+    if (nextPhotos.length === MAX_PHOTOS) {
+      navigation.navigate('CosmeticConfirm', {
+        photos: nextPhotos,
+      });
     }
   };
 
@@ -86,7 +65,6 @@ export default function CosmeticRegisterScreen() {
 
   return (
     <View style={styles.container}>
-      {/* 카메라 */}
       <Camera
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
@@ -95,17 +73,14 @@ export default function CosmeticRegisterScreen() {
         photo
       />
 
-      {/* 상단 안내 */}
       <View style={styles.topOverlay}>
-        <Text style={styles.title}>
-          {currentIndex + 1} / {MAX_PHOTOS} 촬영
+        <Text style={styles.step}>
+          {currentIndex + 1} / {MAX_PHOTOS}
         </Text>
-        <Text style={styles.sub}>
-          화장품을 화면 중앙에 두고 촬영해주세요
-        </Text>
+        <Text style={styles.title}>{currentGuide.title}</Text>
+        <Text style={styles.sub}>{currentGuide.desc}</Text>
       </View>
 
-      {/* 썸네일 */}
       {photos.length > 0 && (
         <View style={styles.thumbnailBox}>
           <Image
@@ -115,33 +90,15 @@ export default function CosmeticRegisterScreen() {
         </View>
       )}
 
-      {/* 버튼 */}
-      {photos.length < MAX_PHOTOS ? (
-        <TouchableOpacity
-          style={styles.captureButton}
-          onPress={handleCapture}
-        >
-          <Text style={styles.captureText}>촬영하기</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity
-          style={[
-            styles.uploadButton,
-            uploading && { opacity: 0.6 },
-          ]}
-          onPress={handleUpload}
-          disabled={uploading}
-        >
-          <Text style={styles.uploadText}>
-            {uploading ? '업로드 중...' : '내 파우치에 저장'}
-          </Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.captureButton}
+        onPress={handleCapture}
+      >
+        <Text style={styles.captureText}>촬영하기</Text>
+      </TouchableOpacity>
     </View>
   );
 }
-
-/* ================= 스타일 ================= */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
@@ -151,9 +108,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 20,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+  },
+
+  step: {
+    color: '#FFD400',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
   },
 
   title: {
@@ -178,6 +142,8 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#FFD400',
   },
 
   captureButton: {
@@ -191,22 +157,6 @@ const styles = StyleSheet.create({
   },
 
   captureText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-
-  uploadButton: {
-    position: 'absolute',
-    bottom: 80,
-    alignSelf: 'center',
-    backgroundColor: '#FFD400',
-    paddingVertical: 18,
-    paddingHorizontal: 40,
-    borderRadius: 36,
-  },
-
-  uploadText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
