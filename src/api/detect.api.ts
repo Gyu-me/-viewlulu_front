@@ -9,7 +9,7 @@
  *     (추후 Python 서버 연동 시 이 파일만 교체)
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type DetectResponse = {
   detectedId: string | null;
