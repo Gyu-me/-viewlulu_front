@@ -3,7 +3,7 @@
  * - 로그인
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type LoginResponse = {
   token: string;

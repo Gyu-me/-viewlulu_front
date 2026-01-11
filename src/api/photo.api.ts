@@ -4,7 +4,7 @@
  * - Authorization 자동 포함 (client.ts)
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type UploadPhotoResponse = {
   message: string;

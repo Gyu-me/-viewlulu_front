@@ -9,7 +9,7 @@
  *    - 조회 API: 추후 백엔드 구현 시 그대로 연결
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type AnalysisType = 'face' | 'skin';
 

@@ -4,7 +4,7 @@
  * - 결과 저장 API 분리 (추후 Python 서버 연동 대비)
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type AnalysisUploadResponse = {
   message: string;

@@ -5,7 +5,7 @@
  * - 내 화장품 목록 조회
  */
 
-import { api } from './client';
+import { api } from './api';
 
 export type DetectCosmeticResponse = {
   detectedId: string;
