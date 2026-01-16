@@ -25,6 +25,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { FeatureStackParamList } from '../navigation/FeatureStackNavigator';
 import { uploadAnalysisPhotoApi } from '../api/analysis.api';
 
+import CameraGate from '../components/CameraGate';
+
 type Nav = NativeStackNavigationProp<FeatureStackParamList>;
 
 const { width, height } = Dimensions.get('window');
@@ -69,80 +71,79 @@ export default function FaceAnalysisScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.textArea}>
-        <Text style={styles.title}>얼굴형 분석</Text>
-        <Text style={styles.desc}>
-          얼굴을 프레임 안에 맞추고{'\n'}
-          정면을 바라본 상태에서 촬영해주세요.
-        </Text>
-      </View>
+    <CameraGate>
+      <View style={styles.container}>
+        <View style={styles.textArea}>
+          <Text style={styles.title}>얼굴형 분석</Text>
+          <Text style={styles.desc}>
+            얼굴을 프레임 안에 맞추고{'\n'}
+            정면을 바라본 상태에서 촬영해주세요.
+          </Text>
+        </View>
 
-      <Camera
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive
-        photo
-      />
-
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
-        <Defs>
-          <Mask id="mask">
-            <Rect width="100%" height="100%" fill="white" />
-            <Rect
-              x={(width - FRAME_WIDTH) / 2}
-              y={FRAME_TOP}
-              width={FRAME_WIDTH}
-              height={FRAME_HEIGHT}
-              rx={FRAME_RADIUS}
-              ry={FRAME_RADIUS}
-              fill="black"
-            />
-          </Mask>
-        </Defs>
-        <Rect
-          width="100%"
-          height="100%"
-          fill="rgba(0,0,0,0.6)"
-          mask="url(#mask)"
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive
+          photo
         />
-      </Svg>
 
-      <View
-        style={[
-          styles.frame,
-          {
-            width: FRAME_WIDTH,
-            height: FRAME_HEIGHT,
-            borderRadius: FRAME_RADIUS,
-            top: FRAME_TOP,
-            left: (width - FRAME_WIDTH) / 2,
-          },
-        ]}
-      />
+        <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
+          <Defs>
+            <Mask id="mask">
+              <Rect width="100%" height="100%" fill="white" />
+              <Rect
+                x={(width - FRAME_WIDTH) / 2}
+                y={FRAME_TOP}
+                width={FRAME_WIDTH}
+                height={FRAME_HEIGHT}
+                rx={FRAME_RADIUS}
+                ry={FRAME_RADIUS}
+                fill="black"
+              />
+            </Mask>
+          </Defs>
+          <Rect
+            width="100%"
+            height="100%"
+            fill="rgba(0,0,0,0.6)"
+            mask="url(#mask)"
+          />
+        </Svg>
 
-      <TouchableOpacity
-        style={styles.captureButton}
-        onPress={handleCapture}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <Text style={styles.captureText}>촬영하기</Text>
-        )}
-      </TouchableOpacity>
-    </View>
+        <View
+          style={[
+            styles.frame,
+            {
+              width: FRAME_WIDTH,
+              height: FRAME_HEIGHT,
+              borderRadius: FRAME_RADIUS,
+              top: FRAME_TOP,
+              left: (width - FRAME_WIDTH) / 2,
+            },
+          ]}
+        />
+
+        <TouchableOpacity
+          style={styles.captureButton}
+          onPress={handleCapture}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <Text style={styles.captureText}>촬영하기</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    </CameraGate>
   );
 }
-
-/* ================= 스타일 ================= */
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
   textArea: {
     position: 'absolute',
     top: 50,
@@ -153,13 +154,7 @@ const styles = StyleSheet.create({
   },
   title: { color: '#FFD400', fontSize: 28, fontWeight: '800', marginBottom: 12 },
   desc: { color: '#FFFFFF', fontSize: 16, textAlign: 'center', lineHeight: 22 },
-
-  frame: {
-    position: 'absolute',
-    borderWidth: 4,
-    borderColor: '#FFD400',
-  },
-
+  frame: { position: 'absolute', borderWidth: 4, borderColor: '#FFD400' },
   captureButton: {
     position: 'absolute',
     bottom: 100,

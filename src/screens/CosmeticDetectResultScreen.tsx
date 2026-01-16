@@ -1,9 +1,10 @@
 /**
  * CosmeticDetectResultScreen (🔥 최종 안전본)
  * --------------------------------------------------
- * - cosmeticId 기반 서버 조회
- * - Tab 이동 / 화면 이탈 시 상태 완전 초기화
- * - 잘못된 진입 / 서버 오류 / 재진입 모두 방어
+ * ✅ cosmeticId 기반 서버 조회
+ * ✅ 화면 이탈 시 상태 완전 초기화
+ * ✅ 잘못된 진입 / 서버 오류 / 재진입 모두 방어
+ * ✅ 응답 필드 호환: cosmeticName/name 둘 다 처리
  */
 
 import React, { useEffect, useState, useCallback } from 'react';
@@ -24,32 +25,26 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { colors } from '../theme/colors';
-import {
-  getCosmeticDetailApi,
-  CosmeticDetail,
-} from '../api/cosmetic.api';
+import { getCosmeticDetailApi, CosmeticDetail } from '../api/cosmetic.api';
 import type { MyPouchStackParamList } from '../navigation/MyPouchStackNavigator';
-
-/* ================= 타입 ================= */
 
 type Route = RouteProp<MyPouchStackParamList, 'CosmeticDetectResult'>;
 type Nav = NativeStackNavigationProp<MyPouchStackParamList>;
-
-/* ================= 화면 ================= */
 
 export default function CosmeticDetectResultScreen() {
   const route = useRoute<Route>();
   const navigation = useNavigation<Nav>();
 
-  /** 🔑 단일 ID 개념 */
-  const cosmeticId = route.params?.cosmeticId;
+  // ✅ 들어오는 cosmeticId가 number/string일 수 있음
+  const cosmeticIdRaw = route.params?.cosmeticId as any;
+  const cosmeticId =
+    cosmeticIdRaw !== undefined && cosmeticIdRaw !== null
+      ? String(cosmeticIdRaw)
+      : null;
 
   const [loading, setLoading] = useState(true);
   const [cosmetic, setCosmetic] = useState<CosmeticDetail | null>(null);
 
-  /* ================= 라이프사이클 관리 ================= */
-
-  // 🔥 화면 이탈 시 상태 초기화 (탭 이동 / 홈 이동 대응)
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -58,8 +53,6 @@ export default function CosmeticDetectResultScreen() {
       };
     }, [])
   );
-
-  /* ================= 데이터 로딩 ================= */
 
   useEffect(() => {
     if (!cosmeticId) return;
@@ -70,13 +63,17 @@ export default function CosmeticDetectResultScreen() {
       .then((data) => {
         if (isActive) setCosmetic(data);
       })
-      .catch(() => {
-        if (isActive) {
-          Alert.alert(
-            '조회 실패',
-            '화장품 정보를 불러오지 못했습니다.'
-          );
-        }
+      .catch((e: any) => {
+        console.log('[CosmeticDetectResultScreen][getCosmeticDetailApi error]', e);
+
+        if (!isActive) return;
+
+        const msg =
+          e?.message === 'NO_TOKEN'
+            ? '로그인이 만료되었습니다. 다시 로그인해주세요.'
+            : '화장품 정보를 불러오지 못했습니다.';
+
+        Alert.alert('조회 실패', msg);
       })
       .finally(() => {
         if (isActive) setLoading(false);
@@ -87,9 +84,6 @@ export default function CosmeticDetectResultScreen() {
     };
   }, [cosmeticId]);
 
-  /* ================= 예외 방어 ================= */
-
-  // ❌ 잘못된 진입
   if (!cosmeticId) {
     return (
       <View style={styles.container}>
@@ -109,7 +103,6 @@ export default function CosmeticDetectResultScreen() {
     );
   }
 
-  // ⏳ 로딩
   if (loading) {
     return (
       <View style={styles.center}>
@@ -121,14 +114,11 @@ export default function CosmeticDetectResultScreen() {
     );
   }
 
-  // ❌ 서버 오류
   if (!cosmetic) {
     return (
       <View style={styles.container}>
         <Text style={styles.title}>인식 결과</Text>
-        <Text style={styles.desc}>
-          화장품 정보를 불러올 수 없습니다.
-        </Text>
+        <Text style={styles.desc}>화장품 정보를 불러올 수 없습니다.</Text>
 
         <TouchableOpacity
           style={styles.secondaryButton}
@@ -140,7 +130,8 @@ export default function CosmeticDetectResultScreen() {
     );
   }
 
-  /* ================= 정상 화면 ================= */
+  // ✅ 호환: cosmeticName 우선, 없으면 name
+  const displayName = cosmetic.cosmeticName || cosmetic.name;
 
   return (
     <View style={styles.container}>
@@ -148,25 +139,21 @@ export default function CosmeticDetectResultScreen() {
 
       <Text style={styles.desc}>
         이 화장품은{'\n'}
-        <Text style={{ fontWeight: '800' }}>
-          {cosmetic.name}
-        </Text>
+        <Text style={{ fontWeight: '800' }}>{displayName}</Text>
         입니다.
       </Text>
 
-      {/* 상세 정보 이동 */}
       <TouchableOpacity
         style={styles.primaryButton}
         onPress={() =>
           navigation.replace('CosmeticDetail', {
-            cosmeticId,
+            cosmeticId: cosmetic.cosmeticId, // ✅ 정규화된 값 사용
           })
         }
       >
         <Text style={styles.primaryText}>상세 정보 보기</Text>
       </TouchableOpacity>
 
-      {/* 파우치 복귀 */}
       <TouchableOpacity
         style={styles.secondaryButton}
         onPress={() => navigation.popToTop()}
@@ -177,8 +164,6 @@ export default function CosmeticDetectResultScreen() {
   );
 }
 
-/* ================= 스타일 ================= */
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -186,11 +171,7 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: {
     color: colors.primary,
     fontSize: 26,
@@ -210,11 +191,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  primaryText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  primaryText: { color: '#000', fontSize: 16, fontWeight: '700' },
   secondaryButton: {
     borderWidth: 2,
     borderColor: colors.primary,
@@ -222,9 +199,5 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
   },
-  secondaryText: {
-    color: colors.primary,
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '600' },
 });

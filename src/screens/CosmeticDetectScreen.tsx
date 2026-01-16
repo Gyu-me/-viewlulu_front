@@ -1,181 +1,193 @@
 /**
- * CosmeticDetectScreen (🔥 최종 안전본)
+ * CosmeticDetectScreen (FINAL + DEBUG SAFE)
  * --------------------------------------------------
- * - 화장품 인식 전용 카메라
- * - Tab / Home 이동 시 카메라 즉시 중단
- * - 촬영 → 서버 전송
- * - cosmeticId 수신 후 Result 화면으로 replace 이동
- *
- * ✅ 안전성 보장
- * - 포커스 해제 시 Camera 완전 비활성화
- * - 중복 촬영 / 중복 요청 방지
- * - Stack 내부 흐름 유지
+ * ✅ Hook 순서 고정 (React 규칙 100% 준수)
+ * ✅ Camera lifecycle 안전
+ * ✅ Node(/cosmetics/detect)만 호출
+ * ✅ 디버그 로그 유지
  */
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Camera,
   useCameraDevice,
+  useCameraPermission,
 } from 'react-native-vision-camera';
-import {
-  useNavigation,
-  useIsFocused,
-  useFocusEffect,
-} from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-import type { MyPouchStackParamList } from '../navigation/MyPouchStackNavigator';
-import { detectCosmeticApi } from '../api/cosmetic.api';
+import { colors } from '../theme/colors';
+import { detectCosmeticApi } from '../api/cosmeticDetect.api';
+import { api } from '../api/api';
 
-/* ================= 타입 ================= */
+/* ================= DEBUG ================= */
 
-type Nav = NativeStackNavigationProp<MyPouchStackParamList>;
+const now = () => new Date().toISOString().slice(11, 23);
+const log = (...a: any[]) => console.log(`[${now()}][Detect]`, ...a);
+const errlog = (...a: any[]) => console.error(`[${now()}][Detect][ERR]`, ...a);
 
-/* ================= 화면 ================= */
+/* ================= Component ================= */
 
 export default function CosmeticDetectScreen() {
+  const navigation = useNavigation<any>();
   const cameraRef = useRef<Camera>(null);
+
   const device = useCameraDevice('back');
-  const navigation = useNavigation<Nav>();
+  const { hasPermission, requestPermission } = useCameraPermission();
 
-  const isFocused = useIsFocused();
   const [loading, setLoading] = useState(false);
+  const [isActive, setIsActive] = useState(false);
 
-  /* ================= 라이프사이클 관리 ================= */
+  /* ✅ 모든 Hook은 return 위에서 고정 */
 
-  // 🔥 화면 이탈 시 로딩 상태 초기화 (탭 이동 / 홈 이동 대응)
+  useEffect(() => {
+    log('mount', { baseURL: api?.defaults?.baseURL });
+    return () => log('unmount');
+  }, []);
+
+  useEffect(() => {
+    log('permission', hasPermission);
+    if (!hasPermission) requestPermission();
+  }, [hasPermission, requestPermission]);
+
+  useEffect(() => {
+    log('state', { isActive, loading });
+  }, [isActive, loading]);
+
   useFocusEffect(
     useCallback(() => {
+      log('focus ON');
+      setIsActive(true);
       return () => {
-        setLoading(false);
+        log('focus OFF');
+        setIsActive(false);
       };
     }, [])
   );
 
-  /* ================= 촬영 처리 ================= */
+  /* ================= Capture ================= */
 
   const handleCapture = async () => {
-    if (!cameraRef.current || loading || !isFocused) return;
+    if (loading || !cameraRef.current) return;
 
     try {
       setLoading(true);
+      log('capture start');
 
-      const photo = await cameraRef.current.takePhoto();
+      const photo = await cameraRef.current.takePhoto({ flash: 'off' });
+      log('photo', photo.path);
 
-      const result = await detectCosmeticApi({
+      const payload = {
         uri: `file://${photo.path}`,
-        name: 'cosmetic.jpg',
+        name: 'capture.jpg',
         type: 'image/jpeg',
-      });
+      };
 
-      // 🔑 단일 ID 개념 유지
+      log('payload', payload);
+
+      const result = await detectCosmeticApi(payload);
+      log('result', result);
+
       navigation.replace('CosmeticDetectResult', {
-        cosmeticId: result.cosmeticId,
+        cosmeticId: result.detectedId,
+        source: result.source,
+        bestDistance: result.bestDistance,
+        top5: result.top5,
       });
-    } catch (e) {
-      Alert.alert(
-        '인식 실패',
-        '화장품 인식에 실패했습니다.\n다시 시도해주세요.'
-      );
+    } catch (e: any) {
+      errlog('detect error', e?.message, e);
+      Alert.alert('인식 실패', e?.message ?? 'Network Error');
     } finally {
       setLoading(false);
+      log('capture end');
     }
   };
 
-  /* ================= 예외 처리 ================= */
+  /* ================= Render ================= */
 
-  if (!device) {
-    return (
+  let content: React.ReactNode;
+
+  if (!hasPermission) {
+    content = (
       <View style={styles.center}>
-        <Text style={{ color: '#FFD400' }}>카메라 준비 중...</Text>
+        <Text style={styles.text}>카메라 권한이 필요합니다.</Text>
+        <TouchableOpacity style={styles.primaryBtn} onPress={requestPermission}>
+          <Text style={styles.primaryText}>권한 허용</Text>
+        </TouchableOpacity>
       </View>
+    );
+  } else if (!device) {
+    content = (
+      <View style={styles.center}>
+        <Text style={styles.text}>카메라 로딩 중...</Text>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+    );
+  } else {
+    content = (
+      <>
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive={isActive}
+          photo
+        />
+        <View style={styles.overlay}>
+          <TouchableOpacity
+            style={styles.captureButton}
+            onPress={handleCapture}
+            disabled={loading}
+          >
+            <Text>{loading ? '인식 중...' : '촬영하기'}</Text>
+          </TouchableOpacity>
+        </View>
+      </>
     );
   }
 
-  /* ================= 화면 ================= */
-
-  return (
-    <View style={styles.container}>
-      <Camera
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive={isFocused}   // 🔥 핵심: 포커스 기반 ON/OFF
-        photo
-      />
-
-      <View style={styles.topOverlay}>
-        <Text style={styles.title}>
-          화장품을 화면 중앙에 비춰주세요
-        </Text>
-        <Text style={styles.sub}>
-          촬영하면 인식 결과를 알려드려요
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        style={[
-          styles.captureButton,
-          loading && { opacity: 0.6 },
-        ]}
-        onPress={handleCapture}
-        disabled={loading}
-      >
-        <Text style={styles.captureText}>
-          {loading ? '인식 중...' : '촬영하기'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-  );
+  return <View style={styles.container}>{content}</View>;
 }
 
-/* ================= 스타일 ================= */
+/* ================= Styles ================= */
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
+  container: { flex: 1, backgroundColor: '#000' },
   center: {
     flex: 1,
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
   },
-  topOverlay: {
+  text: { color: '#fff', fontSize: 15, textAlign: 'center' },
+  primaryBtn: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  primaryText: { color: '#000', fontWeight: '700' },
+  overlay: {
     position: 'absolute',
-    top: 40,
+    bottom: 40,
     width: '100%',
     alignItems: 'center',
   },
-  title: {
-    color: '#FFD400',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  sub: {
-    color: '#FFD400',
-    fontSize: 14,
-    marginTop: 6,
-  },
+  guide: { color: colors.primary, fontSize: 16, marginBottom: 20 },
   captureButton: {
-    position: 'absolute',
-    bottom: 80,
-    alignSelf: 'center',
-    backgroundColor: '#FFD400',
-    paddingVertical: 18,
-    paddingHorizontal: 60,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 40,
+    paddingVertical: 16,
     borderRadius: 30,
   },
-  captureText: {
-    color: '#000',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
+  captureText: { color: '#000', fontWeight: '700', fontSize: 16 },
 });

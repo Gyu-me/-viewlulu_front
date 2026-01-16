@@ -1,11 +1,10 @@
 /**
- * HomeScreen (가이드 + 요약 강화본)
+ * HomeScreen (UI 개선 버전)
  * --------------------------------------------------
- * - 상단: 서비스 가이드 카드
- * - 중단: 기능 버튼 (화장품 중심)
- * - 하단: 오늘의 파우치 요약 (서버 데이터)
- *
- * ⚠️ 분석 기능은 주석 처리 (추후 복구 예정)
+ * - 부드러운 그라데이션과 그림자 효과
+ * - 노란색을 포인트 컬러로만 사용
+ * - 다크 모드 기반의 세련된 배색
+ * - 카드별 깊이감 차별화
  */
 
 import React, { useEffect, useState } from 'react';
@@ -44,11 +43,9 @@ export default function HomeScreen() {
         );
 
         setCount(data.length);
-        setOldest(sorted[0].createdAt);
         setLatest(sorted[sorted.length - 1].cosmeticName);
-      } catch {
-        // 홈에서는 조용히 실패 무시
-      }
+        setOldest(sorted[0].createdAt);
+      } catch {}
     };
 
     fetchSummary();
@@ -58,16 +55,19 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>홈</Text>
 
-      {/* ① 가이드 카드 */}
+      {/* 가이드 카드 */}
       <View style={styles.guideCard}>
-        <Text style={styles.guideTitle}>화장품 등록 → 분석 → 관리</Text>
+        <Text style={styles.guideTitle}>
+          뷰루루를 통해 화장품을 등록하고,{'\n'}
+          관리하고, 자신을 가꿔보세요!
+        </Text>
         <Text style={styles.guideDesc}>
-          가지고 있는 화장품을{'\n'}
-          사진으로 등록하고 편하게 관리하세요
+          얼굴형 체크를 통해{'\n'}
+          나에게 어울리는 화장법을 알아보세요
         </Text>
       </View>
 
-      {/* ② 기능 버튼 */}
+      {/* 기능 버튼 */}
       <View style={styles.actionRow}>
         <ActionButton
           label="화장품 등록"
@@ -77,8 +77,6 @@ export default function HomeScreen() {
             })
           }
         />
-
-        {/*
         <ActionButton
           label="얼굴형 분석"
           onPress={() =>
@@ -87,16 +85,29 @@ export default function HomeScreen() {
             })
           }
         />
-        */}
       </View>
 
-      {/* ③ 오늘의 파우치 요약 */}
+      {/* 최근 분석 결과 */}
+      <TouchableOpacity
+        style={styles.recentCard}
+        activeOpacity={0.85}
+        onPress={() =>
+          navigation.navigate('Feature', {
+            screen: 'RecentResult',
+          })
+        }
+      >
+        <Text style={styles.recentTitle}>최근 분석 결과</Text>
+        <Text style={styles.recentLink}>탭하여 자세히 보기 →</Text>
+      </TouchableOpacity>
+
+      {/* 오늘의 파우치 */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>오늘의 파우치</Text>
 
         {count === 0 ? (
           <Text style={styles.summaryEmpty}>
-            아직 등록된 화장품이 없습니다
+            아직 등록된 화장품이 없어요
           </Text>
         ) : (
           <>
@@ -135,79 +146,134 @@ const ActionButton = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#0A0A0A',
     padding: 20,
     paddingTop: 28,
   },
 
   title: {
-    color: colors.primary,
+    color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     marginBottom: 20,
+    letterSpacing: -0.5,
   },
 
   guideCard: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 28,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#FFD60A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
   },
   guideTitle: {
-    color: colors.primary,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    lineHeight: 24,
+    marginBottom: 12,
+    letterSpacing: -0.3,
   },
   guideDesc: {
-    color: '#fff',
+    color: '#A0A0A0',
     fontSize: 14,
     lineHeight: 20,
+    letterSpacing: -0.2,
   },
 
   actionRow: {
     flexDirection: 'row',
-    marginBottom: 28,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
   },
   actionButton: {
-    borderWidth: 2,
-    borderColor: colors.primary,
+    backgroundColor: '#FFD60A',
     borderRadius: 16,
     paddingVertical: 18,
-    paddingHorizontal: 20,
+    flex: 1,
+    alignItems: 'center',
+    shadowColor: '#FFD60A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   actionText: {
-    color: colors.primary,
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 15,
+    letterSpacing: -0.3,
+  },
+
+  recentCard: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  recentTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  recentLink: {
+    color: '#FFD60A',
+    fontSize: 13,
+    textAlign: 'right',
+    fontWeight: '500',
   },
 
   summaryCard: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    borderRadius: 18,
-    padding: 18,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    padding: 22,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   summaryTitle: {
-    color: colors.primary,
+    color: '#FFD60A',
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '700',
+    marginBottom: 14,
+    letterSpacing: -0.3,
   },
   summaryText: {
-    color: '#fff',
-    fontSize: 15,
-    marginBottom: 6,
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginBottom: 8,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   summarySub: {
-    color: '#ccc',
+    color: '#8E8E93',
     fontSize: 13,
-    marginBottom: 2,
+    marginBottom: 4,
+    letterSpacing: -0.1,
   },
   summaryEmpty: {
-    color: '#fff',
-    opacity: 0.6,
+    color: '#8E8E93',
     fontSize: 14,
+    letterSpacing: -0.2,
   },
 });

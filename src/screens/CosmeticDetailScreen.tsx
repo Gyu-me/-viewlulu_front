@@ -29,12 +29,11 @@ import { colors } from '../theme/colors';
 const API_BASE_URL = 'https://api.viewlulu.site';
 const S3_BASE_URL = 'https://viewlulus3.s3.ap-northeast-2.amazonaws.com';
 
-/* ================= 타입 ================= */
-
 type Photo = {
   s3Key: string;
   originalName: string;
   mimeType: string;
+  url?: string; // ✅ 백엔드에서 추가로 내려주는 URL
 };
 
 type CosmeticDetail = {
@@ -48,7 +47,12 @@ type RouteParams = {
   CosmeticDetail: { cosmeticId: number };
 };
 
-/* ================= 화면 ================= */
+const toImageUrl = (keyOrUrl?: string | null) => {
+  if (!keyOrUrl) return null;
+  if (/^https?:\/\//i.test(keyOrUrl)) return keyOrUrl;
+  const clean = keyOrUrl.replace(/^\//, '');
+  return `${S3_BASE_URL.replace(/\/$/, '')}/${encodeURI(clean)}`;
+};
 
 export default function CosmeticDetailScreen() {
   const navigation = useNavigation();
@@ -59,17 +63,13 @@ export default function CosmeticDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  /* ================= 데이터 조회 ================= */
-
   useEffect(() => {
     const fetchDetail = async () => {
       try {
         const token = await AsyncStorage.getItem('accessToken');
         const res = await axios.get<CosmeticDetail>(
           `${API_BASE_URL}/cosmetics/${cosmeticId}`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
+          { headers: { Authorization: `Bearer ${token}` } }
         );
         setData(res.data);
       } catch {
@@ -81,8 +81,6 @@ export default function CosmeticDetailScreen() {
 
     fetchDetail();
   }, [cosmeticId]);
-
-  /* ================= 삭제 ================= */
 
   const handleDelete = () => {
     Alert.alert(
@@ -96,12 +94,9 @@ export default function CosmeticDetailScreen() {
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('accessToken');
-              await axios.delete(
-                `${API_BASE_URL}/cosmetics/${cosmeticId}`,
-                {
-                  headers: { Authorization: `Bearer ${token}` },
-                }
-              );
+              await axios.delete(`${API_BASE_URL}/cosmetics/${cosmeticId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
               Alert.alert('삭제 완료', '화장품이 삭제되었습니다.');
               navigation.goBack();
             } catch {
@@ -112,8 +107,6 @@ export default function CosmeticDetailScreen() {
       ]
     );
   };
-
-  /* ================= 상태 처리 ================= */
 
   if (loading) {
     return (
@@ -133,28 +126,33 @@ export default function CosmeticDetailScreen() {
     );
   }
 
-  /* ================= UI ================= */
-
   return (
     <ScrollView style={styles.container}>
-      {/* 제품명 */}
       <Text style={styles.name}>{data.cosmeticName}</Text>
 
-      {/* 등록일 */}
       <Text style={styles.date}>
         등록일: {new Date(data.createdAt).toLocaleString()}
       </Text>
 
-      {/* 이미지 */}
-      {data.photos.map((photo, index) => (
-        <Image
-          key={`${data.cosmeticId}-${index}`}
-          source={{ uri: `${S3_BASE_URL}/${photo.s3Key}` }}
-          style={styles.image}
-        />
-      ))}
+      {data.photos.map((photo, index) => {
+        const uri = toImageUrl(photo.url || photo.s3Key);
+        return (
+          <Image
+            key={`${data.cosmeticId}-${index}`}
+            source={uri ? { uri } : undefined}
+            style={styles.image}
+            onError={(e) => {
+              console.log(
+                '[CosmeticDetailScreen][image load error]',
+                data.cosmeticId,
+                uri,
+                e?.nativeEvent
+              );
+            }}
+          />
+        );
+      })}
 
-      {/* 삭제 버튼 */}
       <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
         <Text style={styles.deleteText}>화장품 삭제하기</Text>
       </TouchableOpacity>
@@ -162,14 +160,8 @@ export default function CosmeticDetailScreen() {
   );
 }
 
-/* ================= 스타일 ================= */
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#000',
-  },
+  container: { flex: 1, padding: 20, backgroundColor: '#000' },
 
   center: {
     flex: 1,
@@ -185,11 +177,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
 
-  date: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 20,
-  },
+  date: { color: '#fff', fontSize: 14, marginBottom: 20 },
 
   image: {
     width: '100%',
@@ -209,14 +197,7 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
 
-  deleteText: {
-    color: '#ff4d4f',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  deleteText: { color: '#ff4d4f', fontSize: 16, fontWeight: '700' },
 
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 15,
-  },
+  errorText: { color: '#ff6b6b', fontSize: 15 },
 });

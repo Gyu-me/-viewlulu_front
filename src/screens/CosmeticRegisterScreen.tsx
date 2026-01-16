@@ -19,6 +19,8 @@ import {
 import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { useNavigation } from '@react-navigation/native';
 
+import CameraGate from '../components/CameraGate';
+
 const MAX_PHOTOS = 4;
 
 const CAPTURE_GUIDE = [
@@ -47,11 +49,8 @@ export default function CosmeticRegisterScreen() {
     const nextPhotos = [...photos, `file://${photo.path}`];
     setPhotos(nextPhotos);
 
-    // ✅ 4장 촬영 완료 → 확인 화면 이동
     if (nextPhotos.length === MAX_PHOTOS) {
-      navigation.navigate('CosmeticConfirm', {
-        photos: nextPhotos,
-      });
+      navigation.navigate('CosmeticConfirm', { photos: nextPhotos });
     }
   };
 
@@ -64,46 +63,47 @@ export default function CosmeticRegisterScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Camera
-        ref={cameraRef}
-        style={StyleSheet.absoluteFill}
-        device={device}
-        isActive
-        photo
-      />
+    <CameraGate>
+      <View style={styles.container}>
+        <Camera
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          device={device}
+          isActive
+          photo
+        />
 
-      <View style={styles.topOverlay}>
-        <Text style={styles.step}>
-          {currentIndex + 1} / {MAX_PHOTOS}
-        </Text>
-        <Text style={styles.title}>{currentGuide.title}</Text>
-        <Text style={styles.sub}>{currentGuide.desc}</Text>
-      </View>
-
-      {photos.length > 0 && (
-        <View style={styles.thumbnailBox}>
-          <Image
-            source={{ uri: photos[photos.length - 1] }}
-            style={styles.thumbnail}
-          />
+        <View style={styles.topOverlay}>
+          <Text style={styles.step}>
+            {currentIndex + 1} / {MAX_PHOTOS}
+          </Text>
+          <Text style={styles.title}>{currentGuide.title}</Text>
+          <Text style={styles.sub}>{currentGuide.desc}</Text>
         </View>
-      )}
 
-      <TouchableOpacity
-        style={styles.captureButton}
-        onPress={handleCapture}
-      >
-        <Text style={styles.captureText}>촬영하기</Text>
-      </TouchableOpacity>
-    </View>
+        {photos.length > 0 && (
+          <View style={styles.thumbnailBox}>
+            <Image
+              source={{ uri: photos[photos.length - 1] }}
+              style={styles.thumbnail}
+            />
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.captureButton}
+          onPress={handleCapture}
+        >
+          <Text style={styles.captureText}>촬영하기</Text>
+        </TouchableOpacity>
+      </View>
+    </CameraGate>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-
   topOverlay: {
     position: 'absolute',
     top: 0,
@@ -112,32 +112,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: 'rgba(0,0,0,0.65)',
   },
-
-  step: {
-    color: '#FFD400',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-
-  title: {
-    color: '#FFD400',
-    fontSize: 22,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-
-  sub: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-
-  thumbnailBox: {
-    position: 'absolute',
-    bottom: 160,
-    right: 20,
-  },
-
+  step: { color: '#FFD400', fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  title: { color: '#FFD400', fontSize: 22, fontWeight: '800', marginBottom: 6 },
+  sub: { color: '#FFFFFF', fontSize: 14 },
+  thumbnailBox: { position: 'absolute', bottom: 160, right: 20 },
   thumbnail: {
     width: 64,
     height: 64,
@@ -145,7 +123,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#FFD400',
   },
-
   captureButton: {
     position: 'absolute',
     bottom: 80,
@@ -155,10 +132,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 60,
     borderRadius: 36,
   },
-
-  captureText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#000',
-  },
+  captureText: { fontSize: 18, fontWeight: 'bold', color: '#000' },
 });

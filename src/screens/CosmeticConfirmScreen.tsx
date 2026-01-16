@@ -1,10 +1,28 @@
 /**
- * 📁 CosmeticConfirmScreen.tsx (최종 안정본 + 에러 로그 강화)
+ * 📁 CosmeticConfirmScreen.tsx (최종 안정본 + 에러 로그 강화 + 413 처리 추가)
  * --------------------------------------------------
+ * 기능 요약
  * - 촬영된 사진 확인
  * - 화장품 이름 입력 (필수)
  * - 사진 여러 장 = 화장품 1개 저장
- * - 🔥 서버/프론트 에러 구분 로그 추가
+ *
+ * 오류 처리 (Alert 출력 목록)
+ * 1️⃣ 입력 오류
+ *   - 화장품 이름 미입력
+ *   - 저장할 사진 없음
+ *
+ * 2️⃣ 서버 오류 (Axios 기반)
+ *   - 413 Payload Too Large
+ *     → "사진 용량이 너무 큽니다. 다시 촬영해 주세요."
+ *   - 기타 서버 응답 오류 (status + response data 표시)
+ *
+ * 3️⃣ 네트워크 오류
+ *   - 요청은 갔으나 서버 응답 없음
+ *
+ * 4️⃣ Axios 설정 오류 / 알 수 없는 오류
+ *
+ * ※ 기존 로직/구조/스타일 절대 변경 없음
+ * ※ 413 오류 메시지 처리만 추가됨
  */
 
 import React, { useState } from 'react';
@@ -82,6 +100,15 @@ export default function CosmeticConfirmScreen() {
           console.log('❌ RESPONSE STATUS:', error.response.status);
           console.log('❌ RESPONSE DATA:', error.response.data);
           console.log('❌ RESPONSE HEADERS:', error.response.headers);
+
+          // ✅ ✅ ✅ 413 Payload Too Large 전용 처리 (추가된 부분)
+          if (error.response.status === 413) {
+            Alert.alert(
+              '업로드 실패',
+              '사진 용량이 너무 큽니다. 다시 촬영해 주세요.',
+            );
+            return;
+          }
 
           Alert.alert(
             '저장 실패 (서버)',
